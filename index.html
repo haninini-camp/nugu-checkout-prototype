@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+
+<html lang="ko">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>nugu Combined Checkout Prototype</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+
+  :root{
+    /* coco design tokens */
+    --dark:#2f2f2f;
+    --info:#ff6738;          /* secondary-500 / 할인·가격 강조 */
+    --primary:#0dbd58;
+    --accent:#00adff;
+    --gray-100:#fafafa;
+    --gray-200:#f3f3f3;
+    --gray-300:#dcdcdc;
+    --gray-400:#c7c7c7;
+    --gray-500:#999999;
+    --gray-600:#6b6b6b;
+    --white:#ffffff;
+
+    /* fulfillment */
+    --jp-text:#00adff;  --jp-bg:#d6f0ff;
+    --kr-text:#0dbd58;  --kr-bg:#cff2de;
+    --std-text:#878787; --std-bg:#f3f3f3; --std-label:#2f2f2f;
+
+    --radius:4px;
+    --page-bg:#eceff1;
+  }
+
+  body{
+    background:var(--page-bg);
+    color:var(--dark);
+    font-family:'Pretendard Variable','Pretendard Std Variable','Noto Sans JP','M PLUS 1p',
+                -apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo',sans-serif;
+    font-size:13px;
+    line-height:1.5;
+    padding:24px 20px 80px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px;margin:0 auto}
+
+  /* ---------- intro ---------- */
+  .intro{background:#fff;border:1px solid var(--gray-300);border-radius:8px;padding:20px 24px;margin-bottom:24px}
+  .intro .eyebrow{font-size:10px;letter-spacing:.14em;color:var(--gray-500);font-weight:500;margin-bottom:8px}
+  .intro h1{font-size:18px;font-weight:500;margin-bottom:6px}
+  .intro .sub{font-size:12px;color:var(--gray-600);line-height:1.7}
+  .intro .sub code{background:var(--gray-200);padding:1px 5px;border-radius:3px;font-size:11px;
+                   font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .intro .ctl{margin-top:16px;padding-top:16px;border-top:1px solid var(--gray-200);
+              display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  .sw{display:inline-flex;align-items:center;gap:7px;font-size:12px;cursor:pointer;user-select:none}
+  .sw input{width:34px;height:18px;appearance:none;background:var(--gray-300);border-radius:20px;
+            position:relative;cursor:pointer;transition:background .15s;flex:none}
+  .sw input:checked{background:var(--info)}
+  .sw input::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+                   background:#fff;transition:transform .15s}
+  .sw input:checked::after{transform:translateX(16px)}
+  .legend{display:flex;gap:14px;font-size:11px;color:var(--gray-600);flex-wrap:wrap}
+  .legend i{display:inline-block;width:18px;height:0;border-top:2px dashed var(--info);
+            vertical-align:middle;margin-right:5px}
+
+  /* ---------- stage ---------- */
+  .stage{display:flex;gap:28px;align-items:flex-start}
+  .phone-col{flex:none;position:sticky;top:24px}
+  .notes-col{flex:1;min-width:0}
+
+  /* ---------- device ---------- */
+  .device{width:375px;background:#fff;border:1px solid var(--gray-300);border-radius:10px;
+          overflow:hidden;position:relative;box-shadow:0 4px 24px rgba(0,0,0,.08)}
+  .screen{height:720px;overflow-y:auto;overflow-x:hidden;position:relative;scroll-behavior:smooth}
+  .screen::-webkit-scrollbar{width:0}
+
+  /* status bar */
+  .statusbar{height:44px;display:flex;align-items:center;justify-content:space-between;
+             padding:0 20px;font-size:12px;font-weight:600;background:#fff;flex:none}
+  .statusbar .dots{display:flex;gap:4px;align-items:center;color:var(--dark)}
+  .statusbar .dots span{display:block;width:15px;height:9px;border:1px solid var(--dark);border-radius:2px}
+
+  /* navi_top 44px */
+  .navi{height:44px;display:flex;align-items:center;padding:0 12px;background:#fff;
+        position:relative;z-index:30;flex:none}
+  .navi .back{width:32px;height:32px;display:grid;place-items:center;cursor:pointer}
+  .navi .title{flex:1;text-align:center;font-size:14px;font-weight:700}
+  .navi .acts{display:flex;gap:4px}
+  .navi .acts div{width:32px;height:32px;display:grid;place-items:center;cursor:pointer}
+
+  /* notice — bg secondary-opacity-10 / text secondary */
+  .notice{display:flex;flex-direction:column;justify-content:center;padding:12px;
+          background:rgba(255,103,56,.1);font-size:10px;line-height:10px;color:var(--info)}
+
+  /* tabs */
+  .tabs{display:flex;gap:12px;padding:0 20px;background:#fff;overflow-x:auto;
+        border-bottom:1px solid var(--gray-200);position:sticky;top:0;z-index:29}
+  .tabs::-webkit-scrollbar{height:0}
+  .tab{padding:12px 0;font-size:13px;color:var(--gray-600);white-space:nowrap;cursor:pointer;
+       border:0;border-bottom:2px solid transparent;display:flex;gap:2px;align-items:center;
+       background:none;font-family:inherit;appearance:none;border-radius:0}
+  .tab.on{color:var(--dark);font-weight:700;border-bottom-color:#151515}
+
+  /* delete row */
+  .delrow{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:#fff}
+  .allsel{display:flex;gap:8px;align-items:center;font-size:12px}
+  .btn-sm{border:1px solid var(--gray-300);background:#fff;border-radius:var(--radius);
+          padding:6px 8px;font-size:10px;color:var(--dark);cursor:pointer;font-family:inherit;
+          min-width:28px}
+  .btn-sm:disabled{color:var(--gray-400);border-color:var(--gray-200);cursor:not-allowed}
+
+  /* 배송그룹 영역 — 카드 뒤 배경은 Color/gray/100 (#fafafa), 카드 자체는 흰색 */
+  .cart-body{background:var(--gray-100);padding:12px 20px 20px}
+
+  /* coupon toggle */
+  .coupon{background:rgba(255,103,56,.1);border-radius:var(--radius);
+          display:flex;gap:10px;align-items:center;padding:8px 12px}
+  /* 노브가 flex 축소로 눌리지 않도록 절대 배치 — 정원(18×18) 보장 */
+  .tg{position:relative;box-sizing:border-box;width:52px;height:20px;flex:none;
+      border-radius:20px;background:var(--info);border:1px solid var(--info)}
+  .tg span{position:absolute;left:7px;top:0;height:18px;display:flex;align-items:center;
+           font-size:10px;line-height:1;color:#fff}
+  .tg i{position:absolute;right:1px;top:0;width:18px;height:18px;
+        border-radius:50%;background:#fff;display:block}
+  .coupon p{font-size:10px;color:var(--info)}
+
+  /* groups */
+  .groups{margin-top:12px;display:flex;flex-direction:column;gap:12px}
+  .grp{border:1px solid var(--gray-200);border-radius:var(--radius);overflow:hidden;background:#fff}
+  .grp-head{display:flex;gap:10px;align-items:center;padding:12px;border-bottom:1px solid var(--gray-200)}
+  .grp-head .spacer{flex:1}
+  .grp-tag{background:rgba(255,103,56,.1);color:var(--info);font-size:10px;font-weight:700;
+           line-height:10px;padding:5px 6px;border-radius:var(--radius);white-space:nowrap;flex:none}
+  .grp-badge{display:flex;gap:4px;align-items:center}
+  .grp-badge svg{width:24px;height:24px;display:block}
+  .grp-badge b{font-size:12px;font-weight:700}
+  .grp-eta{padding:8px 12px;font-size:10px}
+
+  .item{padding:12px;border-bottom:1px solid var(--gray-200);display:flex;flex-direction:column;gap:4px}
+  .item-top{display:flex;gap:8px;align-items:flex-start}
+  .item-top .thumb{width:56px;height:70px;flex:none;object-fit:cover;background:var(--gray-200);display:block}
+  .item-desc{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+  .item-desc .brand{font-size:12px}
+  .item-desc .name{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item-x{width:16px;height:16px;flex:none;cursor:pointer;background:none;border:0;padding:0}
+  .opt{background:var(--gray-200);border-radius:var(--radius);padding:4px 8px;
+       display:flex;align-items:center;justify-content:space-between}
+  .opt-l{display:flex;gap:10px;align-items:center;font-size:12px}
+  .opt-l .bar{width:1px;height:12px;background:var(--gray-300)}
+  .opt-l b{font-weight:700}
+  .price-row{display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+  .sale-timer{font-size:10px;color:var(--info)}
+  .price-line{display:flex;align-items:center;justify-content:space-between;width:100%}
+  .price-line>span{font-size:12px;color:var(--gray-500)}
+  .price-vals{display:flex;gap:4px;align-items:center}
+  .price-vals .rate{font-size:12px;font-weight:700;color:var(--info)}
+  .price-vals .was{font-size:12px;color:var(--gray-500);text-decoration:line-through}
+  .price-vals .now{font-size:14px;font-weight:700}
+
+  .grp-total{padding:12px 20px;display:flex;flex-direction:column;gap:8px;align-items:center;background:#fff}
+  .grp-total .calc{display:flex;gap:4px;align-items:center;font-size:12px;font-weight:700;flex-wrap:wrap;
+                   justify-content:center}
+  .grp-total .calc em{font-style:normal;font-size:10px;font-weight:400}
+  .grp-total .calc .sum{font-size:14px}
+  .grp-total .free{font-size:10px;font-weight:700;color:var(--info);text-align:center}
+
+  /* page cart total */
+  .ctotal{background:#fff;padding:20px 12px;display:flex;flex-direction:column;gap:12px}
+  .ct-list{display:flex;flex-direction:column;gap:12px}
+  .ct-row{display:flex;align-items:center;justify-content:space-between;font-size:12px}
+  .ct-row b{font-weight:700}
+  .ct-sub{display:flex;flex-direction:column;gap:8px}
+  .ct-detail{display:flex;align-items:center;justify-content:space-between;font-size:10px;color:var(--gray-500)}
+  .ct-detail .lb{display:flex;gap:4px;align-items:flex-start;padding:0 4px}
+  .ct-detail .lb::before{content:'';width:6px;height:6px;border-left:1px solid var(--gray-400);
+                         border-bottom:1px solid var(--gray-400);flex:none;margin-top:1px}
+  .ct-guide{background:var(--gray-200);padding:12px;display:flex;flex-direction:column;gap:4px;
+            align-items:center;font-size:12px;color:var(--gray-500);text-align:center}
+  .ct-final{display:flex;align-items:center;justify-content:space-between;font-size:16px;font-weight:700}
+  .ct-final .amt{color:var(--info)}
+
+  /* recommend */
+  .reco{background:#fff;margin-top:20px;padding:20px 20px 24px;border-top:8px solid var(--gray-200)}
+  .reco h3{font-size:14px;font-weight:500;margin-bottom:12px}
+  .reco .row{display:flex;gap:8px;overflow-x:auto}
+  .reco .row::-webkit-scrollbar{height:0}
+  .reco .card{width:108px;flex:none}
+  .reco .card .ph{width:108px;height:135px;background:var(--gray-200)}
+  .reco .card p{font-size:10px;margin-top:6px;color:var(--gray-600)}
+  .reco .card b{font-size:12px;display:block;margin-top:2px}
+
+  /* fixed bottom */
+  .fixed-bottom{position:sticky;bottom:0;background:#fff;padding:8px;
+                display:flex;flex-direction:column;gap:12px;z-index:28;
+                box-shadow:0 -6px 6px -6px rgba(0,0,0,.15)}
+  .fb-notice{background:var(--gray-200);border-radius:var(--radius);padding:4px;text-align:center;
+             font-size:10px;color:var(--gray-500)}
+  .fb-btn{width:100%;border-radius:var(--radius);padding:14px 12px;font-size:14px;font-weight:700;
+          border:1px solid var(--dark);background:var(--dark);color:#fff;cursor:pointer;
+          font-family:inherit;transition:background .15s,border-color .15s}
+  .fb-btn:disabled{background:var(--gray-200);border-color:var(--gray-400);color:#fff;cursor:not-allowed}
+
+  /* checkbox — 체크 표시는 background-image(SVG)로 그려 브라우저 편차를 없앤다 */
+  .cb{width:20px;height:20px;flex:none;
+      -webkit-appearance:none;-moz-appearance:none;appearance:none;
+      border:1px solid var(--dark);background-color:#fff;background-repeat:no-repeat;
+      background-position:center;background-size:12px 12px;
+      cursor:pointer;border-radius:0;margin:0;
+      transition:background-color .12s,border-color .12s}
+  .cb:checked,.cb:indeterminate{background-color:var(--dark);border-color:var(--dark)}
+  /* 체크 */
+  .cb:checked{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M1.8 6.2 4.6 9 10.2 3.2' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
+  /* 부분 선택 — 가로줄 */
+  .cb:indeterminate{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.2 6h7.6' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E")}
+  /* 체크와 부분선택이 겹치면 체크가 이긴다 */
+  .cb:checked:indeterminate{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M1.8 6.2 4.6 9 10.2 3.2' fill='none' stroke='%23fff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
+
+  /* hidden by tab filter */
+  .hide{display:none !important}
+
+  /* ---------- 옵션변경 바텀시트 (Dialog - portal-sheet) ---------- */
+  .sheet-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.5);z-index:1044;
+                  animation:fadeIn .2s ease-out}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .sheet{position:absolute;left:0;right:0;bottom:0;z-index:1045;background:#fff;
+         border-radius:4px 4px 0 0;max-height:calc(100% - 24px);
+         display:flex;flex-direction:column;animation:sheetUp .3s cubic-bezier(0,0,.2,1)}
+  @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  .sheet[hidden],.sheet-backdrop[hidden]{display:none}
+
+  .sheet-handle{display:flex;justify-content:center;padding:16px 0 24px;flex:none;cursor:pointer}
+  .sheet-handle i{display:block;width:38px;height:4px;border-radius:4px;background:#d5d5d5}
+  .sheet-inner{padding:4px;display:flex;flex-direction:column;min-height:0;flex:1}
+  .sheet-body{padding-bottom:40px;overflow-y:auto;min-height:0;flex:1}
+
+  /* 375 기준 리사이징: 시안(540)의 좌우 16px → 12px, 칩 gap 12 → 8, 칩 좌우 12 → 8 */
+  .sheet-note{margin:0 12px;background:var(--gray-200);border-radius:var(--radius);
+              padding:8px 12px;display:flex;gap:4px;align-items:center}
+  .sheet-note svg{width:20px;height:20px;flex:none;display:block}
+  .sheet-note p{font-size:12px;line-height:12px;color:var(--gray-600)}
+
+  .sheet-opts{padding:16px 12px 0}
+  .sheet-opts h4{font-size:16px;line-height:24px;font-weight:700;color:var(--dark)}
+  .sheet-opts h4+.chips{margin-top:8px}
+  .sheet-opts .blk{padding-top:16px}
+
+  /* 시안처럼 한 줄 유지(넘치면 가로 스크롤). 줄바꿈 시 높이가 어긋나므로 nowrap */
+  .chips{display:flex;gap:8px;align-items:center;flex-wrap:nowrap;overflow-x:auto}
+  .chips::-webkit-scrollbar{height:0}
+  .chip{box-sizing:border-box;height:34px;flex:none;
+        background:#fff;border:1px solid var(--gray-300);border-radius:var(--radius);
+        padding:0 8px;min-width:38px;display:inline-flex;align-items:center;
+        justify-content:center;gap:2px;
+        font-size:14px;line-height:1;color:var(--dark);cursor:pointer;font-family:inherit}
+  .chip svg{width:20px;height:20px;flex:none;display:block}
+  /* 클래스명은 CHANGE NOTES 패널의 .note 와 충돌하지 않게 분리 */
+  .chip .cnote{font-size:10px;line-height:1;color:var(--gray-600);white-space:nowrap}
+  .chip.on{border-color:var(--dark);font-weight:700}
+  .chips.dim{opacity:.4}
+  .chip:disabled{opacity:.3;cursor:not-allowed;border-color:var(--dark)}
+
+  .sheet-sel{padding:24px 12px 20px}
+  .selcard{background:var(--gray-100);border:1px solid var(--gray-300);
+           border-radius:var(--radius);padding:12px}
+  .selcard .ff{font-size:10px;line-height:1;margin-top:6px;font-weight:700}
+  .selcard .r1{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+  .selcard .r1 .lb{display:flex;gap:2px;align-items:center;font-size:14px;line-height:14px}
+  .selcard .r1 .lb svg{width:16px;height:16px;flex:none;display:block}
+  .selcard .r1 button{background:none;border:0;padding:0;cursor:pointer;width:12px;height:12px;flex:none}
+  .selcard .eta{font-size:12px;line-height:12px;color:var(--gray-600);margin-top:4px}
+  .selcard .r3{display:flex;align-items:center;justify-content:space-between;padding-top:16px}
+  .selcard .price{font-size:14px;line-height:20px;font-weight:700}
+  .stepper{display:flex;height:32px}
+  .stepper button{width:32px;height:32px;display:grid;place-items:center;cursor:pointer;
+                  background:#fff;border:1px solid var(--gray-300);padding:0}
+  .stepper button.minus{background:var(--gray-200);border-color:var(--gray-400);
+                        border-radius:var(--radius) 0 0 var(--radius)}
+  .stepper button.plus{border-radius:0 var(--radius) var(--radius) 0}
+  .stepper button:disabled{cursor:not-allowed}
+  .stepper button svg{width:16px;height:16px;display:block}
+  .stepper .num{width:29px;height:32px;display:grid;place-items:center;background:#fff;
+                border-top:1px solid var(--gray-300);border-bottom:1px solid var(--gray-300);
+                font-size:12px;line-height:12px}
+  .sheet-hr{margin-top:12px;border-top:1px solid var(--gray-400);opacity:.25}
+  .sheet-total{display:flex;align-items:flex-start;justify-content:space-between;padding-top:12px;
+               font-size:16px;line-height:24px;font-weight:700}
+  .sheet-cta{padding:0 4px;flex:none}
+  .sheet-cta button{width:100%;height:52px;background:var(--dark);border:1px solid var(--dark);
+                    border-radius:var(--radius);color:#fff;font-size:14px;line-height:21px;
+                    font-weight:700;cursor:pointer;font-family:inherit}
+  .sheet-cta button:disabled{background:var(--gray-200);border-color:var(--gray-400);
+                             color:#fff;cursor:not-allowed}
+  .sheet-empty{font-size:12px;color:var(--gray-500);text-align:center;padding:20px 0}
+
+  /* ---------- change highlight ---------- */
+  .mark{position:relative}
+  body.hl .mark{outline:2px dashed var(--info);outline-offset:-1px;border-radius:2px}
+  body.hl .mark::before{content:attr(data-no);position:absolute;top:-1px;left:-1px;z-index:20;
+     background:var(--info);color:#fff;font-size:9px;font-weight:700;line-height:1;
+     padding:3px 4px;border-radius:0 0 3px 0;letter-spacing:.02em}
+  .mark::before{display:none}
+  body.hl .mark::before{display:block}
+
+  /* ---------- notes ---------- */
+  .panel{background:#fff;border:1px solid var(--gray-300);border-radius:8px;margin-bottom:20px;overflow:hidden}
+  .panel>h2{font-size:11px;letter-spacing:.12em;font-weight:600;color:var(--gray-600);
+            padding:14px 20px;border-bottom:1px solid var(--gray-200);background:var(--gray-100)}
+  .note{display:flex;gap:14px;padding:16px 20px;border-bottom:1px solid var(--gray-200)}
+  .note:last-child{border-bottom:0}
+  .note .no{width:26px;height:26px;flex:none;border:1px solid var(--dark);border-radius:var(--radius);
+            display:grid;place-items:center;font-size:11px;font-weight:700}
+  .note .bd{flex:1;min-width:0}
+  .note .ttl{font-size:13px;font-weight:500;margin-bottom:8px}
+  .note dl{display:grid;grid-template-columns:52px 1fr;gap:4px 10px;font-size:12px;line-height:1.6}
+  .note dt{font-size:10px;font-weight:700;letter-spacing:.06em;padding-top:2px}
+  .note dt.a{color:var(--gray-500)}
+  .note dt.b{color:var(--info)}
+  .note dd{color:var(--gray-600)}
+  .note dd.b{color:var(--dark)}
+  .note .jp{font-size:11px;background:var(--gray-100);border:1px solid var(--gray-200);
+            border-radius:var(--radius);padding:6px 8px;margin-top:8px;color:var(--dark)}
+
+  .keep li,.chk li{font-size:12px;color:var(--gray-600);padding:9px 20px;border-bottom:1px solid var(--gray-200);
+                   list-style:none;display:flex;gap:8px}
+  .keep li:last-child,.chk li:last-child{border-bottom:0}
+  .keep li::before{content:'—';color:var(--gray-400);flex:none}
+  .chk li::before{content:'!';color:var(--info);font-weight:700;flex:none;width:10px}
+
+  table.spec{width:100%;border-collapse:collapse;font-size:12px}
+  table.spec th,table.spec td{padding:9px 12px;border-bottom:1px solid var(--gray-200);text-align:left;
+                              vertical-align:top}
+  table.spec th{background:var(--gray-100);font-weight:500;font-size:11px;color:var(--gray-600);white-space:nowrap}
+  table.spec td code{font-size:11px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+                     background:var(--gray-100);padding:1px 4px;border-radius:3px}
+  .sw-jp{color:var(--jp-text)} .sw-kr{color:var(--kr-text)} .sw-std{color:var(--std-text)}
+
+  @media (max-width:1080px){
+    .stage{flex-direction:column}
+    .phone-col{position:static;align-self:center}
+  }
+
+  .public-guide .jp{margin-top:0}
+  .public-note{margin-top:12px}
+  @media (max-width:1080px){.notes-col{width:100%}.public-guide,.public-note{max-width:640px;margin-left:auto;margin-right:auto}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="intro"><div class="eyebrow">INTERACTIVE PROTOTYPE · CART · COMBINED CHECKOUT</div>
+<h1>배송유형은 유지하고, 주문·결제 흐름은 하나로</h1>
+<p class="sub">실제 출시 플로우를 기반으로 포트폴리오용으로 재구성한 인터랙티브 프로토타입입니다.<br/>배송유형별 상품을 함께 선택하고, 옵션 변경에 따라 배송그룹이 이동하는 흐름을 확인할 수 있습니다.</p>
+<div class="ctl"><button class="btn-sm" id="resetBtn" style="margin-left:auto">초기 상태로</button></div></div>
+<div class="stage">
+<!-- ======================= PHONE ======================= -->
+<div class="phone-col">
+<div class="device">
+<div class="statusbar">
+<span>9:41</span>
+<span class="dots"><span></span></span>
+</div>
+<div class="navi">
+<div class="back">
+<svg fill="none" height="20" stroke="#2f2f2f" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" viewbox="0 0 24 24" width="20"><path d="M15 18l-6-6 6-6"></path></svg>
+</div>
+<div class="title">カート</div>
+<div class="acts">
+<div>
+<svg fill="none" height="20" stroke="#2f2f2f" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2" viewbox="0 0 24 24" width="20">
+<path d="M3 10.5L12 3l9 7.5"></path><path d="M5.5 9.5V21h13V9.5"></path><path d="M10 21v-5h4v5"></path></svg>
+</div>
+<div>
+<svg fill="none" height="20" stroke="#2f2f2f" stroke-linecap="round" stroke-width="1.2" viewbox="0 0 24 24" width="20"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+</div>
+</div>
+</div>
+<div class="screen" id="screen">
+<!-- 01 상단 문구 -->
+<div class="notice mark" data-no="01">配送タイプごとに発送・お届け時期が異なる場合があります。</div>
+<!-- 07 탭 = 필터 -->
+<div class="tabs mark" data-no="07" id="tabs"></div>
+<!-- 09 전체선택 + 선택삭제 -->
+<div class="delrow mark" data-no="09">
+<label class="allsel">
+<input class="cb" id="cbAll" type="checkbox"/>
+<span>すべて選択 <span id="allCount">(0)</span></span>
+</label>
+<button class="btn-sm" disabled="" id="delBtn">選択削除</button>
+</div>
+<div class="cart-body">
+<!-- 09 쿠폰 토글 (항상 ON) -->
+<div class="coupon mark" data-no="09">
+<span class="tg"><span>ON</span><i></i></span>
+<p>クーポン適用後の価格を表示</p>
+</div>
+<!-- 02·03·06 배송그룹 -->
+<div class="groups mark" data-no="02" id="groups"></div>
+</div>
+<!-- 08 하단 합계 -->
+<div class="ctotal mark" data-no="08" id="ctotal"></div>
+<div class="reco">
+<h3>あなたへのおすすめアイテム</h3>
+<div class="row">
+<div class="card"><div class="ph"></div><p>FELICE</p><b>¥4,400</b></div>
+<div class="card"><div class="ph"></div><p>MOUSSY</p><b>¥3,900</b></div>
+<div class="card"><div class="ph"></div><p>SLY</p><b>¥6,200</b></div>
+</div>
+</div>
+<!-- 04·05 하단 fixed -->
+<div class="fixed-bottom">
+<div class="fb-notice mark" data-no="04">※配送タイプごとに発送・お届け時期が異なる場合があります。</div>
+<button class="fb-btn mark" data-no="05" disabled="" id="orderBtn">合計0点 ¥0で注文する</button>
+</div>
+</div>
+<!-- 옵션변경 바텀시트 -->
+<div class="sheet-backdrop" hidden="" id="sheetBackdrop"></div>
+<div aria-label="オプション変更" aria-modal="true" class="sheet" hidden="" id="sheet" role="dialog">
+<div class="sheet-handle" id="sheetHandle"><i></i></div>
+<div class="sheet-inner">
+<div class="sheet-body" id="sheetBody"></div>
+<div class="sheet-cta">
+<button id="sheetApply">オプション変更</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- ======================= NOTES ======================= -->
+<div class="notes-col"><div class="panel public-guide">
+<h2>HOW TO TRY</h2>
+<div class="note"><div class="no">01</div><div class="bd"><div class="ttl">배송유형 탭 전환</div><div class="jp">탭을 이동해도 선택한 상품이 유지되는지 확인해보세요.</div></div></div>
+<div class="note"><div class="no">02</div><div class="bd"><div class="ttl">여러 배송유형 함께 선택</div><div class="jp">서로 다른 배송유형의 상품을 동시에 선택해 하나의 주문 버튼으로 이어지는 흐름을 확인할 수 있습니다.</div></div></div>
+<div class="note"><div class="no">03</div><div class="bd"><div class="ttl">옵션 변경</div><div class="jp">商品 카드의 オプション変更에서 COLOR·SIZE를 바꾸면 배송유형이 달라지고 상품이 해당 그룹으로 이동합니다.</div></div></div>
+</div>
+<div class="panel public-note"><h2>PORTFOLIO NOTE</h2><div style="padding:16px 20px;font-size:12px;line-height:1.7;color:#6b6b6b">회사 내부 원본 파일을 공개한 것이 아니라, 공개 가능한 화면과 출시된 동작을 기준으로 별도 재구성한 자료입니다.</div></div></div>
+</div>
+</div>
+<script>
+(function(){
+  'use strict';
+
+  var PROD_IMG = 'data:image/jpeg;base64,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';
+
+  var EXPRESS_PATH = 'M6.45625 22.001H22.0559L20.9357 20.8008H5.25605L6.45625 22.001ZM17.4045 2.80376C17.179 2.80947 16.9545 2.82039 16.7316 2.83599C16.7076 2.83767 16.6834 2.83908 16.6594 2.84087C16.4248 2.85842 16.1916 2.88194 15.9602 2.91021C15.9489 2.91159 15.9373 2.91271 15.926 2.91411C15.8667 2.9215 15.8073 2.93044 15.7482 2.93853C15.6818 2.94761 15.6151 2.95592 15.549 2.96587C15.2323 3.01354 14.9185 3.07148 14.6086 3.13872C14.4433 3.17459 14.2786 3.21266 14.1154 3.25396C13.7998 3.33382 13.4881 3.42485 13.1809 3.52446C13.1477 3.5352 13.1143 3.54573 13.0812 3.55669C13.035 3.57204 12.9886 3.58778 12.9426 3.60356C12.8754 3.6266 12.8081 3.64992 12.7414 3.67388C12.5545 3.74102 12.3692 3.81246 12.1857 3.88677C12.151 3.90083 12.1158 3.91445 12.0812 3.92876C12.0126 3.95719 11.9443 3.98723 11.8762 4.01665C11.8356 4.03419 11.7945 4.0515 11.7541 4.06938C11.5805 4.14618 11.4085 4.22648 11.2385 4.30962C11.1887 4.33395 11.1385 4.358 11.0891 4.38286C10.7008 4.57813 10.3222 4.7904 9.9543 5.01763C9.93387 5.03024 9.91313 5.043 9.89277 5.05571L9.8459 5.08501C9.59198 5.24485 9.34312 5.41256 9.0998 5.58696C9.06692 5.61053 9.03385 5.63442 9.00117 5.65825C8.94523 5.69905 8.88953 5.74072 8.83418 5.78228C8.79339 5.8129 8.75257 5.84402 8.71211 5.87505C6.28976 7.73247 4.45298 10.3152 3.52656 13.2989H3.52559C3.5218 13.3111 3.51859 13.3238 3.51484 13.336C3.47063 13.4797 3.42979 13.625 3.38984 13.7706C3.37828 13.8127 3.36687 13.8552 3.35566 13.8975C3.2705 14.2189 3.19493 14.5446 3.13105 14.8741C3.12785 14.8906 3.12444 14.9073 3.12129 14.9239C3.05446 15.275 3.00095 15.6309 2.95918 15.9903C2.95647 16.0136 2.95397 16.0372 2.95137 16.0606C2.89022 16.6094 2.85665 17.1673 2.85664 17.7325L2.86543 17.9229C2.87779 18.0447 2.904 18.1627 2.93867 18.2764C2.94136 18.2852 2.94464 18.294 2.94746 18.3028C2.98075 18.4064 3.02243 18.5058 3.07246 18.6006C3.0785 18.6121 3.08475 18.6235 3.09101 18.6348C3.14288 18.7283 3.20217 18.8167 3.26875 18.8995C3.27556 18.9079 3.2823 18.9165 3.28926 18.9249C3.36198 19.0121 3.44223 19.0924 3.52949 19.1651C3.54694 19.1796 3.56522 19.1932 3.5832 19.2071C3.60767 19.226 3.63201 19.245 3.65742 19.2627C3.67903 19.2778 3.70156 19.2915 3.72383 19.3057C3.75302 19.3243 3.78243 19.3425 3.81269 19.3594C3.83096 19.3697 3.84972 19.3791 3.86836 19.3887C3.8982 19.4041 3.92843 19.4188 3.95918 19.4327C3.98081 19.4424 4.00255 19.4521 4.02461 19.461C4.05766 19.4743 4.09124 19.4866 4.12519 19.4981C4.14755 19.5057 4.16985 19.5138 4.19258 19.5206C4.22786 19.531 4.26388 19.5395 4.3 19.5479C4.31852 19.5522 4.33693 19.5578 4.35566 19.5616C4.41365 19.5731 4.47264 19.5829 4.53242 19.5889L4.72285 19.5987H22.0539L21.9016 18.3995H7.12226L8.18867 17.1993H21.7492L20.2258 5.19927H11.3479L13.6145 3.99907H20.0734L19.9211 2.79888H17.7893L17.4045 2.80376ZM8.13105 10.8594C8.11598 10.881 8.1058 10.9089 8.10176 10.9385C8.09776 10.9681 8.10028 10.9987 8.10859 11.0264C8.11692 11.0542 8.13074 11.0781 8.14863 11.0948C8.16653 11.1115 8.18769 11.1201 8.20918 11.1202H10.5666C10.5852 11.1201 10.604 11.127 10.6203 11.1397C10.6367 11.1525 10.6505 11.1711 10.6604 11.1934C10.6702 11.2158 10.6762 11.2414 10.677 11.2676C10.6777 11.2936 10.6736 11.3196 10.6652 11.3428L9.9582 13.2989H4.57734C5.41153 10.8118 6.92782 8.63738 8.90449 6.99907H10.8508L8.13105 10.8594ZM12.3605 6.99907C14.0172 6.9992 15.3604 8.34241 15.3605 9.99907V10.2989C15.3605 11.9556 14.0173 13.2987 12.3605 13.2989H10.6359L12.8693 10.0811C12.8844 10.0594 12.8947 10.0318 12.8986 10.002C12.9025 9.97216 12.8994 9.94098 12.8908 9.91313C12.8822 9.88546 12.8679 9.86214 12.8498 9.84575C12.8317 9.8294 12.8108 9.82096 12.7893 9.82134L10.4953 9.8604C10.4771 9.86072 10.4587 9.85466 10.4426 9.84282C10.4266 9.83099 10.4126 9.81404 10.4025 9.79302C10.3924 9.77188 10.3867 9.74706 10.385 9.72173C10.3833 9.6965 10.3857 9.67084 10.3928 9.64751L11.1945 6.99907H12.3605ZM0.280468 9.79985H2.91914C3.0684 9.45845 3.23115 9.12441 3.40937 8.79985H0.680859L0.280468 9.79985ZM0.920116 8.20024H3.76387C3.97924 7.85539 4.21009 7.52137 4.45723 7.20024H1.32051L0.920116 8.20024ZM1.56074 6.59966H4.95039C5.25719 6.24849 5.583 5.91443 5.92695 5.59966H1.96016L1.56074 6.59966ZM2.20039 5.00005H6.63105C6.75518 4.90225 6.88111 4.80606 7.00898 4.71294C7.0161 4.70771 7.02333 4.70152 7.03047 4.69634C7.17535 4.59132 7.32336 4.48951 7.47285 4.39067C7.48856 4.38029 7.50495 4.36974 7.5207 4.35942C7.66629 4.26414 7.81432 4.17134 7.96406 4.08208C7.98381 4.07028 8.00381 4.05762 8.02363 4.04595C8.05059 4.03009 8.07855 4.01568 8.10566 4.00005H2.60078L2.20039 5.00005Z';
+
+  /* 바텀시트 아이콘 — Figma 원본 에셋 그대로 */
+  var KR_PATH = 'M5.38 18.335H18.38L17.446 17.335H4.38L5.38 18.335ZM14.503 2.336C14.1163 2.346 13.7343 2.37333 13.357 2.418L13.267 2.429C12.6037 2.5126 11.9482 2.64972 11.307 2.839L11.079 2.909C10.9563 2.949 10.8343 2.98967 10.713 3.031L10.552 3.089C10.232 3.20522 9.91701 3.335 9.608 3.478L9.45 3.553C9.31667 3.61633 9.18433 3.683 9.053 3.753C9.02367 3.76767 8.995 3.78267 8.967 3.798C8.817 3.878 8.669 3.96067 8.523 4.046L8.463 4.083C8.31367 4.17233 8.16633 4.26467 8.021 4.36C8.00433 4.37 7.98833 4.38033 7.973 4.391C7.823 4.48967 7.67533 4.59167 7.53 4.697L7.509 4.713C5.33995 6.2893 3.73726 8.52326 2.939 11.083H2.937L2.927 11.119C2.92033 11.139 2.91433 11.16 2.909 11.182C2.81209 11.503 2.72869 11.828 2.659 12.156C2.57774 12.5291 2.51433 12.9059 2.469 13.285L2.456 13.413C2.42533 13.6897 2.40433 13.969 2.393 14.251L2.39 14.335C2.384 14.4817 2.38067 14.629 2.38 14.777L2.388 14.936C2.39867 15.038 2.419 15.137 2.449 15.233L2.461 15.266C2.48767 15.348 2.521 15.4267 2.561 15.502L2.589 15.552C2.60367 15.5787 2.61967 15.6047 2.637 15.63L2.668 15.675C2.68467 15.699 2.70233 15.7223 2.721 15.745C2.73433 15.763 2.74867 15.7797 2.764 15.795C2.84477 15.8882 2.93604 15.9718 3.036 16.044C3.09588 16.0854 3.15797 16.1234 3.222 16.158L3.272 16.182C3.32437 16.206 3.37776 16.2276 3.432 16.247L3.482 16.264C3.508 16.2713 3.53433 16.278 3.561 16.284C3.68343 16.3161 3.80943 16.3326 3.936 16.333H18.378L18.251 15.333H5.935L6.823 14.333H18.124L16.854 4.333H9.457L11.346 3.333H16.728L16.602 2.333H14.825L14.503 2.336ZM10.176 5.833C10.8596 5.85187 11.509 6.13671 11.9858 6.62694C12.4627 7.11716 12.7295 7.77409 12.7295 8.458C12.7295 9.14191 12.4627 9.79884 11.9858 10.2891C11.509 10.7793 10.8596 11.0641 10.176 11.083H3.993C4.6996 9.01658 5.98193 7.19509 7.689 5.833H10.176Z';
+  var ICON_KR20 = '<svg viewBox="0 0 20 20" width="20" height="20" fill="none"><path d="' + KR_PATH + '" fill="#0DBD58"/></svg>';
+  var ICON_KR16 = '<svg viewBox="0 0 20 20" width="16" height="16" fill="none"><path d="' + KR_PATH + '" fill="#0DBD58"/></svg>';
+  var ICON_JP20 = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none"><path d="' + EXPRESS_PATH + '" fill="#00ADFF"/></svg>';
+  var ICON_JP16 = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none"><path d="' + EXPRESS_PATH + '" fill="#00ADFF"/></svg>';
+
+  /* 배송유형별 아이콘 — STANDARD 는 아이콘 없음 */
+  function ffIcon(ff, px){
+    if (ff === 'EXPRESS_JP') return px === 16 ? ICON_JP16 : ICON_JP20;
+    if (ff === 'EXPRESS_KR') return px === 16 ? ICON_KR16 : ICON_KR20;
+    return '';
+  }
+  var ICON_X12 = '<svg viewBox="0 0 12 12" width="12" height="12" fill="none">' +
+    '<path d="M9 3L3 9" stroke="#2F2F2F" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<path d="M3 3L9 9" stroke="#2F2F2F" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var ICON_MINUS_OFF = '<svg viewBox="0 0 16 16" width="16" height="16" fill="none">' +
+    '<path d="M3.33333 8H12.6667" stroke="#C7C7C7" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var ICON_MINUS_ON = '<svg viewBox="0 0 16 16" width="16" height="16" fill="none">' +
+    '<path d="M3.33333 8H12.6667" stroke="#2F2F2F" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var ICON_PLUS = '<svg viewBox="0 0 16 16" width="16" height="16" fill="none">' +
+    '<path d="M3.33333 8H12.6667" stroke="#2F2F2F" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '<path d="M8 3.33333V12.6667" stroke="#2F2F2F" stroke-width="1.33333" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  var X_PATH = 'M13.3627 2.10939C13.5085 1.96376 13.7448 1.96376 13.8906 2.10939C14.0365 2.25526 14.0365 2.49208 13.8906 2.63795L8.52823 7.99967L13.8906 13.3627C14.0362 13.5086 14.0364 13.7448 13.8906 13.8906C13.7448 14.0364 13.5079 14.0363 13.362 13.8906L7.99967 8.52822L2.63795 13.8906C2.49211 14.0362 2.25587 14.0363 2.11004 13.8906C1.96431 13.7449 1.96394 13.5086 2.10939 13.3627L7.47176 8.00032L2.10939 2.63795C1.96354 2.49208 1.96353 2.25526 2.10939 2.10939C2.25526 1.96355 2.49208 1.96355 2.63795 2.10939L7.99967 7.47176L13.3627 2.10939Z';
+
+  function expressSvg(color){
+    return '<svg viewBox="0 0 24 24" fill="none"><path d="' + EXPRESS_PATH + '" fill="' + color + '"/></svg>';
+  }
+
+  /* ---- 정책 상수 ---- */
+  var SHIPPING_FEE     = 550;
+  var FREE_THRESHOLD   = 6000;    /* 무료배송 기준: 배송그룹의 최종결제금액 6,000엔 이상 */
+  var SALE_RATE        = 0.10;    /* [HOT SUMMER SALE] 10% OFF */
+  var SECRET_COUPON    = 500;     /* 【SECRET SALE】500円クーポン */
+  var SECRET_MIN       = 5000;
+
+  /* 배송그룹별 송료 쿠폰 — 최종결제금액이 기준 미달인 그룹에만, 보유 시 적용
+     full  : 하단 cart_total 의 상세 행에 쓰는 이름
+     badge : 배송그룹 헤더에 붙는 텍스트 배지                                    */
+  var SHIPPING_COUPON = {
+    EXPRESS_JP : { full:'即日発送(国内) 送料無料クーポン', badge:'送料無料クーポン適用中' },
+    EXPRESS_KR : { full:'即日発送(韓国) 送料割引',        badge:'送料割引適用中' },
+    STANDARD   : null
+  };
+  var FREE_BADGE = '送料無料適用中';   /* 기준 금액 도달로 무료가 된 경우 */
+
+  var GROUPS = [
+    { key:'EXPRESS_JP', label:'即日発送(国内)', color:'#00adff', bg:'#d6f0ff',
+      eta:'発送の目安：注文当日〜3日程度', icon:true },
+    { key:'EXPRESS_KR', label:'即日発送(韓国)', color:'#0dbd58', bg:'#cff2de',
+      eta:'発送の目安：注文当日〜3日程度', icon:true },
+    { key:'STANDARD',   label:'通常配送',      color:'#2f2f2f', bg:'#f3f3f3',
+      eta:'ご注文から7〜14日配送予定', etaColor:'#878787', icon:false }
+  ];
+
+  function mkItem(id, g){
+    return { id:id, group:g, brand:'FELICE',
+             name:'[2回再販](ORIGINAL) レタリングカモロングスリーブTシャツ',
+             opt:'ブリーチ / S', qty:1, list:5500, sale:4400, rate:20,
+             timer:'セール終了まで1日3時間48分', checked:false, removed:false };
+  }
+
+  var state = { tab:'ALL', items:[], wallet:true };
+
+  function seed(){
+    state.tab = 'ALL';
+    state.wallet = true;
+    state.items = [
+      mkItem('jp1','EXPRESS_JP'), mkItem('jp2','EXPRESS_JP'), mkItem('jp3','EXPRESS_JP'),
+      mkItem('kr1','EXPRESS_KR'),
+      mkItem('st1','STANDARD')
+    ];
+  }
+
+  var yen = function(n){ return '¥' + n.toLocaleString('ja-JP'); };
+  function live(){ return state.items.filter(function(i){ return !i.removed; }); }
+  function sel(){  return live().filter(function(i){ return i.checked; }); }
+  function inGroup(k){ return live().filter(function(i){ return i.group === k; }); }
+
+  /* ---------- 08: 계산은 항상 전체 선택 기준 (탭과 무관) ----------
+     무료배송 판정은 배송그룹의 "최종결제금액" 기준.
+     카트 단위 할인(HOT SUMMER SALE / SECRET SALE)은 그룹 판매가 비중으로 안분한다.        */
+  function base(){
+    var s = sel();
+    var listSum = 0, itemDiscount = 0;
+    s.forEach(function(i){ listSum += i.list * i.qty; itemDiscount += (i.list - i.sale) * i.qty; });
+    var afterItem  = listSum - itemDiscount;              /* = Σ 판매가 */
+    var saleCoupon = s.length ? Math.round(afterItem * SALE_RATE) : 0;
+    var secret     = (s.length && afterItem >= SECRET_MIN) ? SECRET_COUPON : 0;
+    return { s:s, listSum:listSum, itemDiscount:itemDiscount, afterItem:afterItem,
+             saleCoupon:saleCoupon, secret:secret, cartDiscount:saleCoupon + secret };
+  }
+
+  /* 배송그룹 단위 계산 — 무료배송 여부 · 송료쿠폰 적용 여부 */
+  function groupCalc(key, b){
+    b = b || base();
+    var gs  = inGroup(key).filter(function(i){ return i.checked; });
+    var sub = 0; gs.forEach(function(i){ sub += i.sale * i.qty; });
+
+    /* 최종결제금액 = 그룹 판매가 − 카트할인 안분액 */
+    var share = b.afterItem > 0 ? (b.cartDiscount * sub / b.afterItem) : 0;
+    var finalAmt = Math.round(sub - share);
+
+    var free   = gs.length > 0 && finalAmt >= FREE_THRESHOLD;
+    var coupon = (!free && gs.length > 0 && state.wallet) ? SHIPPING_COUPON[key] : null;
+
+    return {
+      count : gs.length,
+      sub   : sub,
+      final : finalAmt,
+      free  : free,
+      coupon: coupon,
+      ship  : (gs.length && !free && !coupon) ? SHIPPING_FEE : 0,
+      /* 「あと N円で送料無料」 표기는 시안대로 選択商品の金額 기준 */
+      remain: Math.max(0, FREE_THRESHOLD - sub)
+    };
+  }
+
+  function calc(){
+    var b = base();
+    var shipping = 0, shipRows = [];
+
+    GROUPS.forEach(function(g){
+      var gc = groupCalc(g.key, b);
+      if (!gc.count) return;
+      if (gc.coupon) shipRows.push(gc.coupon.full);
+      shipping += gc.ship;
+    });
+
+    var totalDiscount = b.itemDiscount + b.cartDiscount;
+    return {
+      count: b.s.length, listSum: b.listSum, itemDiscount: b.itemDiscount,
+      saleCoupon: b.saleCoupon, secret: b.secret, shipping: shipping,
+      shipRows: shipRows, totalDiscount: totalDiscount,
+      total: b.listSum - totalDiscount + shipping
+    };
+  }
+
+  /* ---------- render ---------- */
+  var elTabs   = document.getElementById('tabs');
+  var elGroups = document.getElementById('groups');
+  var elTotal  = document.getElementById('ctotal');
+
+  function renderTabs(){
+    var defs = [{k:'ALL', l:'すべて'}].concat(GROUPS.map(function(g){ return {k:g.key, l:g.label}; }));
+    elTabs.innerHTML = defs.map(function(d){
+      var n = d.k === 'ALL' ? live().length : inGroup(d.k).length;
+      return '<button class="tab' + (state.tab === d.k ? ' on' : '') + '" data-tab="' + d.k + '">' +
+             '<span>' + d.l + '</span><span>(' + n + ')</span></button>';
+    }).join('');
+  }
+
+  function itemHtml(it){
+    return '' +
+    '<div class="item" data-id="' + it.id + '">' +
+      '<div class="item-top">' +
+        '<input type="checkbox" class="cb js-item" data-id="' + it.id + '"' + (it.checked ? ' checked' : '') + '>' +
+        '<img class="thumb" src="' + PROD_IMG + '" alt="">' +
+        '<div class="item-desc">' +
+          '<div class="brand">' + it.brand + '</div>' +
+          '<div class="name">' + it.name + '</div>' +
+        '</div>' +
+        '<button class="item-x js-remove" data-id="' + it.id + '" aria-label="削除">' +
+          '<svg viewBox="0 0 16 16" width="16" height="16" fill="none"><path d="' + X_PATH + '" fill="#2F2F2F"/></svg>' +
+        '</button>' +
+      '</div>' +
+      '<div class="opt">' +
+        '<div class="opt-l"><b>' + it.opt + '</b><span class="bar"></span><b>' + it.qty + '</b></div>' +
+        '<button class="btn-sm js-opt" data-id="' + it.id + '" style="font-size:9px;padding:4px">オプション変更</button>' +
+      '</div>' +
+      '<div class="price-row">' +
+        '<div class="sale-timer">' + it.timer + '</div>' +
+        '<div class="price-line"><span>商品金額</span>' +
+          '<div class="price-vals">' +
+            '<span class="rate">' + it.rate + '%</span>' +
+            '<span class="was">' + yen(it.list) + '</span>' +
+            '<span class="now">' + yen(it.sale) + '</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderGroups(){
+    elGroups.innerHTML = GROUPS.map(function(g){
+      var items = inGroup(g.key);
+      if (!items.length) return '';
+      var gc  = groupCalc(g.key);
+      var hid = (state.tab !== 'ALL' && state.tab !== g.key) ? ' hide' : '';
+      var etaColor = g.etaColor || g.color;
+
+      /* 하단: 시안과 동일하게 「あと N円で送料無料」만 노출 (남은 금액이 있을 때) */
+      var freeLine = (gc.count && gc.remain > 0)
+        ? '<div class="free">あと' + gc.remain.toLocaleString('ja-JP') + '円で送料無料</div>'
+        : '';
+
+      /* 시안대로 무료일 때도 送料 ¥0 으로 표기 */
+      var calcLine = gc.count
+        ? '<div class="calc"><em>選択商品の金額</em> ' + yen(gc.sub) +
+          ' <span>+</span> <em>送料</em> ' + yen(gc.ship) +
+          ' <span>=</span> <span class="sum">' + yen(gc.sub + gc.ship) + '</span></div>'
+        : '<div class="calc"><em style="color:#999">選択された商品がありません</em></div>';
+
+      /* 헤더 텍스트 배지 — 기준 도달 무료 / 쿠폰 적용 */
+      var tag = '';
+      if (gc.count){
+        if (gc.free)        tag = '<span class="grp-tag">' + FREE_BADGE + '</span>';
+        else if (gc.coupon) tag = '<span class="grp-tag">' + gc.coupon.badge + '</span>';
+      }
+
+      return '' +
+      '<div class="grp' + hid + '" data-group="' + g.key + '">' +
+        '<div class="grp-head">' +
+          '<input type="checkbox" class="cb js-group" data-group="' + g.key + '">' +
+          '<span class="grp-badge">' +
+            (g.icon ? expressSvg(g.color) : '') +
+            '<b style="color:' + g.color + '">' + g.label + '</b>' +
+          '</span>' +
+          '<span class="spacer"></span>' + tag +
+        '</div>' +
+        '<div class="grp-eta" style="background:' + g.bg + ';color:' + etaColor + '">' + g.eta + '</div>' +
+        items.map(itemHtml).join('') +
+        '<div class="grp-total">' + calcLine + freeLine + '</div>' +
+      '</div>';
+    }).join('');
+
+    /* 그룹 헤더 체크박스: 전체/부분 선택 상태 */
+    GROUPS.forEach(function(g){
+      var box = elGroups.querySelector('.js-group[data-group="' + g.key + '"]');
+      if (!box) return;
+      var items = inGroup(g.key);
+      var on = items.filter(function(i){ return i.checked; }).length;
+      box.checked = items.length > 0 && on === items.length;
+      box.indeterminate = on > 0 && on < items.length;
+    });
+  }
+
+  function renderTotal(){
+    var c = calc();
+    var rows = '';
+
+    if (c.itemDiscount) rows += '<div class="ct-detail"><span class="lb">商品割引</span><span>-' + yen(c.itemDiscount) + '</span></div>';
+    if (c.saleCoupon)   rows += '<div class="ct-detail"><span class="lb">[HOT SUMMER SALE] 10% OFF</span><span>適用中</span></div>';
+    if (c.secret)       rows += '<div class="ct-detail"><span class="lb">【SECRET SALE】500円クーポン</span><span>適用中</span></div>';
+
+    var shipRows = c.shipRows.map(function(t){
+      return '<div class="ct-detail"><span class="lb">' + t + '</span><span>適用中</span></div>';
+    }).join('');
+
+    elTotal.innerHTML = '' +
+      '<div class="ct-list">' +
+        '<div class="ct-row"><span>選択商品の金額</span><b>' + yen(c.listSum) + '</b></div>' +
+        '<div class="ct-sub">' +
+          '<div class="ct-row"><span>合計割引額</span><b>-' + yen(c.totalDiscount) + '</b></div>' + rows +
+        '</div>' +
+        '<div class="ct-sub">' +
+          '<div class="ct-row"><span>送料</span><b>' + (c.shipping ? yen(c.shipping) : '無料') + '</b></div>' + shipRows +
+        '</div>' +
+        '<div class="ct-guide">' +
+          '<div>配送タイプごとに送料が計算されます。</div>' +
+          '<div>最終的な金額は注文画面でご確認いただけます。</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="ct-final"><span>合計</span><span class="amt">' + yen(c.total) + '</span></div>';
+
+    /* 05 · 하단 fixed 버튼 */
+    var btn = document.getElementById('orderBtn');
+    btn.textContent = '合計' + c.count + '点 ' + yen(c.total) + 'で注文する';
+    btn.disabled = c.count === 0;
+
+    /* 09 · 전체선택 / 선택삭제 */
+    var all = live(), on = sel();
+    var cbAll = document.getElementById('cbAll');
+    cbAll.checked = all.length > 0 && on.length === all.length;
+    cbAll.indeterminate = on.length > 0 && on.length < all.length;
+    document.getElementById('allCount').textContent = '(' + on.length + ')';
+    document.getElementById('delBtn').disabled = on.length === 0;
+  }
+
+  function render(){ renderTabs(); renderGroups(); renderTotal(); }
+
+  /* ================= 옵션변경 바텀시트 (Dialog - portal-sheet) ================= */
+
+  /* 옵션 카탈로그.
+     배송유형은 SIZE 에서 최종 확정된다 — 같은 컬러라도 사이즈별로 배송유형이 다를 수 있다.
+     COLOR 칩의 🚄 마크는 "그 컬러의 사이즈 중 하나 이상이 即日発送(韓国)" 이라는 힌트.       */
+  var OPTIONS = [
+    { color:'Deepblue', note:'(モデル)', sizes:[
+        { name:'S', ff:'STANDARD'   },
+        { name:'M', ff:'EXPRESS_KR' } ] },
+    { color:'Black', note:'', sizes:[
+        { name:'S', ff:'STANDARD'   },
+        { name:'M', ff:'STANDARD'   } ] },
+    { color:'White', note:'', sizes:[
+        { name:'S', ff:'EXPRESS_JP' },
+        { name:'M', ff:'EXPRESS_KR' } ] }
+  ];
+  var ALL_SIZES = ['S','M'];   /* 컬러 미선택 시 비활성으로 보여줄 사이즈 */
+
+  /* 그 컬러의 사이즈들이 갖는 특급배송 유형 목록 (GROUPS 순서 유지) */
+  function colorExpressTypes(c){
+    return GROUPS.filter(function(g){
+      return g.key !== 'STANDARD' &&
+             c.sizes.filter(function(s){ return s.ff === g.key; }).length > 0;
+    }).map(function(g){ return g.key; });
+  }
+  /* 카탈로그 전체에 존재하는 특급배송 유형 — 상단 안내 문구용 */
+  function catalogExpressTypes(){
+    return GROUPS.filter(function(g){
+      if (g.key === 'STANDARD') return false;
+      return OPTIONS.filter(function(c){
+        return c.sizes.filter(function(s){ return s.ff === g.key; }).length > 0;
+      }).length > 0;
+    }).map(function(g){ return g.key; });
+  }
+  var FF_SHORT = { EXPRESS_JP:'国内', EXPRESS_KR:'韓国' };
+
+  function findColor(name){
+    return OPTIONS.filter(function(c){ return c.color === name; })[0] || null;
+  }
+
+  var sheet = { itemId:null, color:null, size:null, qty:1 };
+
+  var elSheet    = document.getElementById('sheet');
+  var elBackdrop = document.getElementById('sheetBackdrop');
+  var elSheetBody= document.getElementById('sheetBody');
+  var elApply    = document.getElementById('sheetApply');
+
+  function sheetItem(){
+    return state.items.filter(function(i){ return i.id === sheet.itemId; })[0] || null;
+  }
+
+  /* 확정된 배송유형의 발송 안내 — 시안(韓国)의 표기 방식을 국내에도 적용 */
+  function ffEta(ff){
+    if (ff === 'EXPRESS_KR') return '発送の目安：注文当日〜3日程度(韓国)';
+    if (ff === 'EXPRESS_JP') return '発送の目安：注文当日〜3日程度(国内)';
+    var g = GROUPS.filter(function(x){ return x.key === ff; })[0];
+    return g ? g.eta : '';
+  }
+  function ffMeta(ff){
+    return GROUPS.filter(function(x){ return x.key === ff; })[0] || null;
+  }
+
+  function renderSheet(){
+    var it = sheetItem(); if (!it) return;
+
+    /* COLOR — 마크는 그 컬러의 사이즈에 존재하는 특급배송 유형만큼 (국내/한국 각각) */
+    var colorChips = OPTIONS.map(function(c){
+      var on = sheet.color === c.color;
+      var marks = colorExpressTypes(c).map(function(ff){ return ffIcon(ff, 20); }).join('');
+      return '<button class="chip' + (on ? ' on' : '') + '" data-color="' + c.color + '">' +
+             marks +
+             '<span>' + c.color + '</span>' +
+             (c.note ? '<span class="cnote">' + c.note + '</span>' : '') +
+             '</button>';
+    }).join('');
+
+    /* SIZE — 컬러 선택 전에는 비활성. 선택 후 그 컬러의 사이즈만 활성 */
+    var col = sheet.color ? findColor(sheet.color) : null;
+    var sizeChips, sizeDim;
+    if (col){
+      sizeDim = '';
+      sizeChips = col.sizes.map(function(s){
+        var on = sheet.size === s.name;
+        return '<button class="chip' + (on ? ' on' : '') + '" data-size="' + s.name + '">' +
+               ffIcon(s.ff, 20) +
+               '<span>' + s.name + '</span></button>';
+      }).join('');
+    } else {
+      sizeDim = ' dim';
+      sizeChips = ALL_SIZES.map(function(n){
+        return '<button class="chip" disabled>' + n + '</button>';
+      }).join('');
+    }
+
+    /* 변형은 COLOR + SIZE 가 모두 정해졌을 때 확정 */
+    var variant = null;
+    if (col && sheet.size){
+      var sz = col.sizes.filter(function(s){ return s.name === sheet.size; })[0];
+      if (sz) variant = { label: col.color + ' / ' + sz.name, ff: sz.ff };
+    }
+
+    var selBlock;
+    if (variant){
+      var meta = ffMeta(variant.ff);
+      selBlock =
+        '<div class="selcard">' +
+          '<div class="r1">' +
+            '<span class="lb">' + ffIcon(variant.ff, 16) +
+              '<span>' + variant.label + '</span></span>' +
+            '<button id="sheetClear" aria-label="削除">' + ICON_X12 + '</button>' +
+          '</div>' +
+          '<div class="eta">' + ffEta(variant.ff) + '</div>' +
+          (meta ? '<div class="ff" style="color:' + meta.color + '">配送タイプ：' + meta.label + '</div>' : '') +
+          '<div class="r3">' +
+            '<span class="stepper">' +
+              '<button class="minus" id="qMinus"' + (sheet.qty <= 1 ? ' disabled' : '') + '>' +
+                (sheet.qty <= 1 ? ICON_MINUS_OFF : ICON_MINUS_ON) + '</button>' +
+              '<span class="num">' + sheet.qty + '</span>' +
+              '<button class="plus" id="qPlus">' + ICON_PLUS + '</button>' +
+            '</span>' +
+            '<span class="price">' + yen(it.sale * sheet.qty) + '</span>' +
+          '</div>' +
+        '</div>';
+    } else {
+      selBlock = '<div class="sheet-empty">' +
+        (col ? 'SIZEを選択してください' : 'COLORを選択してください') + '</div>';
+    }
+
+    var cnt = variant ? sheet.qty : 0;
+    var amt = variant ? it.sale * sheet.qty : 0;
+
+    /* 상단 안내 — 카탈로그에 존재하는 특급배송 유형을 모두 표기 */
+    var exTypes = catalogExpressTypes();
+    var noteIcons = exTypes.map(function(ff){ return ffIcon(ff, 20); }).join('');
+    var noteText  = 'マークのオプションは即日発送(' +
+      exTypes.map(function(ff){ return FF_SHORT[ff]; }).join('・') + ')対象です';
+
+    elSheetBody.innerHTML =
+      '<div class="sheet-note">' + noteIcons +
+        '<p>' + noteText + '</p></div>' +
+      '<div class="sheet-opts">' +
+        '<h4>COLOR</h4><div class="chips">' + colorChips + '</div>' +
+        '<div class="blk"><h4>SIZE</h4><div class="chips' + sizeDim + '" style="margin-top:8px">' +
+          sizeChips + '</div></div>' +
+      '</div>' +
+      '<div class="sheet-sel">' + selBlock +
+        '<div class="sheet-hr"></div>' +
+        '<div class="sheet-total"><span>アイテム ' + cnt + ' 個</span><span>' + yen(amt) + '</span></div>' +
+      '</div>';
+
+    sheet.variant = variant;      /* 적용 시 사용 */
+    elApply.disabled = !variant;
+  }
+
+  function openSheet(id){
+    var it = state.items.filter(function(i){ return i.id === id; })[0];
+    if (!it) return;
+    sheet.itemId = id;
+    sheet.qty = it.qty;
+    /* 카트의 현재 옵션이 카탈로그와 일치하면 미리 선택해 둔다 */
+    sheet.color = null; sheet.size = null;
+    var parts = String(it.opt).split(' / ');
+    var col = findColor(parts[0]);
+    if (col){
+      sheet.color = col.color;
+      if (col.sizes.filter(function(s){ return s.name === parts[1]; }).length) sheet.size = parts[1];
+    }
+    renderSheet();
+    elSheet.hidden = false; elBackdrop.hidden = false;
+  }
+
+  function closeSheet(){
+    elSheet.hidden = true; elBackdrop.hidden = true;
+    sheet.itemId = null; sheet.color = null; sheet.size = null; sheet.variant = null;
+  }
+
+  elSheetBody.addEventListener('click', function(e){
+    var c = e.target.closest('.chip[data-color]');
+    if (c){
+      if (sheet.color !== c.dataset.color){
+        sheet.color = c.dataset.color;
+        sheet.size  = null;          /* 컬러가 바뀌면 사이즈는 다시 선택 */
+      }
+      renderSheet(); return;
+    }
+    var s = e.target.closest('.chip[data-size]');
+    if (s){ sheet.size = s.dataset.size; renderSheet(); return; }
+
+    if (e.target.closest('#sheetClear')){ sheet.color = null; sheet.size = null; renderSheet(); return; }
+    if (e.target.closest('#qMinus')){ if (sheet.qty > 1){ sheet.qty--; renderSheet(); } return; }
+    if (e.target.closest('#qPlus')){ sheet.qty++; renderSheet(); return; }
+  });
+
+  elApply.addEventListener('click', function(){
+    var it = sheetItem();
+    if (it && sheet.variant){
+      it.opt   = sheet.variant.label;
+      it.qty   = sheet.qty;
+      it.group = sheet.variant.ff;   /* 배송유형은 SIZE 에서 확정 — 그룹 이동 */
+    }
+    closeSheet(); render();
+  });
+
+  elBackdrop.addEventListener('click', closeSheet);
+  document.getElementById('sheetHandle').addEventListener('click', closeSheet);
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape' && !elSheet.hidden) closeSheet();
+  });
+
+  /* ---------- events ---------- */
+  elTabs.addEventListener('click', function(e){
+    var t = e.target.closest('.tab'); if (!t) return;
+    state.tab = t.dataset.tab;   /* 07 · 선택 상태는 건드리지 않는다 */
+    render();
+  });
+
+  elGroups.addEventListener('change', function(e){
+    var t = e.target;
+    if (t.classList.contains('js-item')){
+      /* 03 · 06 · 다른 배송유형이어도 해제하지 않고, 토스트도 띄우지 않는다 */
+      var it = state.items.filter(function(i){ return i.id === t.dataset.id; })[0];
+      if (it) it.checked = t.checked;
+      render();
+    } else if (t.classList.contains('js-group')){
+      inGroup(t.dataset.group).forEach(function(i){ i.checked = t.checked; });
+      render();
+    }
+  });
+
+  elGroups.addEventListener('click', function(e){
+    var o = e.target.closest('.js-opt');
+    if (o){ openSheet(o.dataset.id); return; }
+    var b = e.target.closest('.js-remove'); if (!b) return;
+    var it = state.items.filter(function(i){ return i.id === b.dataset.id; })[0];
+    if (it){ it.removed = true; it.checked = false; }
+    render();
+  });
+
+  document.getElementById('cbAll').addEventListener('change', function(e){
+    live().forEach(function(i){ i.checked = e.target.checked; });
+    render();
+  });
+
+  document.getElementById('delBtn').addEventListener('click', function(){
+    state.items.forEach(function(i){ if (i.checked){ i.removed = true; i.checked = false; } });
+    render();
+  });
+
+  document.getElementById('resetBtn').addEventListener('click', function(){
+    seed();
+    render();
+    document.getElementById('screen').scrollTop = 0;
+  });
+
+  seed();
+  render();
+})();
+</script>
+</body>
+</html>
